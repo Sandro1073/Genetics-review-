@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genetics 101 — Study Mode</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #18181f;
+    --surface2: #22222c;
+    --border: #2e2e3a;
+    --accent: #c8f060;
+    --accent2: #60b8f0;
+    --accent3: #f06090;
+    --text: #e8e8f0;
+    --text-muted: #7878a0;
+    --correct: #60f0a0;
+    --wrong: #f06060;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(200,240,96,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .screen { display: none; min-height: 100vh; position: relative; z-index: 1; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* HOME */
+  #home { align-items: center; justify-content: center; padding: 40px 20px; gap: 40px; }
+  .home-header { text-align: center; }
+  .home-header .label { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; }
+  .home-header h1 { font-family: 'DM Serif Display', serif; font-size: clamp(36px, 6vw, 64px); line-height: 1.1; }
+  .home-header h1 em { font-style: italic; color: var(--accent); }
+  .home-header p { margin-top: 16px; color: var(--text-muted); font-size: 15px; max-width: 400px; line-height: 1.6; }
+  .stats-row { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .stat-pill { background: var(--surface); border: 1px solid var(--border); border-radius: 100px; padding: 8px 20px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); }
+  .stat-pill span { color: var(--accent); font-weight: 500; }
+  .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; width: 100%; max-width: 860px; }
+  .cat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+  .cat-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(200,240,96,0.03), transparent); opacity: 0; transition: opacity 0.2s; }
+  .cat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .cat-card:hover::after { opacity: 1; }
+  .cat-icon { font-size: 28px; margin-bottom: 10px; }
+  .cat-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .cat-count { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); }
+  .cat-bar { margin-top: 12px; height: 3px; background: var(--border); border-radius: 100px; overflow: hidden; }
+  .cat-bar-fill { height: 100%; background: var(--accent); border-radius: 100px; transition: width 0.5s ease; }
+  .start-btn { background: var(--accent); color: var(--bg); border: none; border-radius: var(--radius); padding: 16px 48px; font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(200,240,96,0.25); }
+
+  /* QUIZ */
+  #quiz { padding: 24px 20px; align-items: center; gap: 24px; }
+  .quiz-topbar { width: 100%; max-width: 720px; display: flex; align-items: center; gap: 16px; }
+  .back-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .back-btn:hover { color: var(--text); border-color: var(--text-muted); }
+  .progress-wrap { flex: 1; }
+  .progress-meta { display: flex; justify-content: space-between; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+  .progress-track { height: 4px; background: var(--border); border-radius: 100px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 100px; transition: width 0.4s ease; }
+  .queue-badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent3); white-space: nowrap; }
+  .question-card { width: 100%; max-width: 720px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; }
+  .q-category { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px; }
+  .q-text { font-family: 'DM Serif Display', serif; font-size: clamp(18px, 3vw, 24px); line-height: 1.4; }
+  .choices { width: 100%; max-width: 720px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .choices { grid-template-columns: 1fr; } }
+  .choice-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; text-align: left; cursor: pointer; transition: all 0.15s; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.5; }
+  .choice-btn .letter { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px; }
+  .choice-btn:hover:not(:disabled) { border-color: var(--accent2); background: var(--surface2); }
+  .choice-btn.correct { border-color: var(--correct) !important; background: rgba(96,240,160,0.08) !important; color: var(--correct); }
+  .choice-btn.wrong { border-color: var(--wrong) !important; background: rgba(240,96,96,0.08) !important; color: var(--wrong); }
+  .choice-btn:disabled { cursor: default; }
+  .feedback-bar { width: 100%; max-width: 720px; border-radius: var(--radius); padding: 16px 24px; display: flex; align-items: center; gap: 16px; opacity: 0; transform: translateY(8px); transition: all 0.25s; }
+  .feedback-bar.show { opacity: 1; transform: translateY(0); }
+  .feedback-bar.correct-fb { background: rgba(96,240,160,0.1); border: 1px solid rgba(96,240,160,0.3); }
+  .feedback-bar.wrong-fb { background: rgba(240,96,96,0.1); border: 1px solid rgba(240,96,96,0.3); }
+  .fb-icon { font-size: 24px; }
+  .fb-text { flex: 1; font-size: 14px; line-height: 1.5; }
+  .fb-text strong { display: block; margin-bottom: 2px; font-size: 15px; }
+  .next-btn { background: var(--accent); color: var(--bg); border: none; border-radius: 8px; padding: 10px 20px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+  .next-btn:hover { transform: translateY(-1px); }
+
+  /* DONE */
+  #done { align-items: center; justify-content: center; padding: 40px 20px; gap: 32px; text-align: center; }
+  .done-trophy { font-size: 72px; }
+  .done-title { font-family: 'DM Serif Display', serif; font-size: clamp(32px, 5vw, 56px); }
+  .done-sub { color: var(--text-muted); font-size: 15px; line-height: 1.6; max-width: 400px; }
+  .done-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; max-width: 480px; }
+  .done-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .done-stat .val { font-family: 'DM Serif Display', serif; font-size: 36px; color: var(--accent); }
+  .done-stat .lbl { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .done-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: var(--radius); padding: 12px 28px; font-family: 'DM Sans', sans-serif; font-size: 15px; cursor: pointer; transition: all 0.15s; }
+  .btn-ghost:hover { border-color: var(--text-muted); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .anim { animation: fadeUp 0.3s ease forwards; }
+</style>
+</head>
+<body>
+
+<div id="home" class="screen active">
+  <div class="home-header">
+    <div class="label">Human Genetics 101 · DDM-05</div>
+    <h1>Study<br><em>Genetics</em></h1>
+    <p>Spaced repetition flash cards. Wrong answers come back. All distractors are plausible — you actually have to know the answer.</p>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill">Total cards: <span id="totalCount">—</span></div>
+    <div class="stat-pill">Mastered: <span id="masteredCount">0</span></div>
+    <div class="stat-pill">Sessions: <span id="sessionCount">0</span></div>
+  </div>
+  <div class="category-grid" id="categoryGrid"></div>
+  <button class="start-btn" id="startAllBtn">Study All Categories →</button>
+</div>
+
+<div id="quiz" class="screen">
+  <div class="quiz-topbar">
+    <button class="back-btn" id="backBtn">← Home</button>
+    <div class="progress-wrap">
+      <div class="progress-meta">
+        <span id="progressLabel">0 / 0</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+    <div class="queue-badge" id="queueBadge">↩ 0 remaining</div>
+  </div>
+  <div class="question-card anim" id="questionCard">
+    <div class="q-category" id="qCategory"></div>
+    <div class="q-text" id="qText"></div>
+  </div>
+  <div class="choices" id="choices"></div>
+  <div class="feedback-bar" id="feedbackBar">
+    <div class="fb-icon" id="fbIcon"></div>
+    <div class="fb-text" id="fbText"></div>
+    <button class="next-btn" id="nextBtn">Next →</button>
+  </div>
+</div>
+
+<div id="done" class="screen">
+  <div class="done-trophy" id="doneTrophy">🎉</div>
+  <div class="done-title" id="doneTitle">Round Complete!</div>
+  <div class="done-sub" id="doneSub"></div>
+  <div class="done-stats">
+    <div class="done-stat"><div class="val" id="doneCorrect">—</div><div class="lbl">Correct</div></div>
+    <div class="done-stat"><div class="val" id="doneWrong">—</div><div class="lbl">Needed Review</div></div>
+    <div class="done-stat"><div class="val" id="donePct">—</div><div class="lbl">Accuracy</div></div>
+  </div>
+  <div class="done-actions">
+    <button class="start-btn" id="redoBtn">Continue →</button>
+    <button class="btn-ghost" id="doneHomeBtn">← Home</button>
+  </div>
+</div>
+
+<script>
+// Each card has: cat, q, a, distractors (exactly 3 plausible wrong answers)
+const CARDS = [
+
+  // ── SCIENTISTS & EXPERIMENTS ──
+  { cat:"Scientists & Experiments", q:"What did Griffith's experiment (1920s) demonstrate?",
+    a:"A 'transforming principle' exists that can transfer hereditary information between organisms.",
+    d:["DNA was confirmed as the hereditary material by destroying it with DNase.","Protein — not DNA — was responsible for transforming bacteria into a virulent form.","RNA acts as an intermediary between DNA and the transforming substance in bacteria."] },
+
+  { cat:"Scientists & Experiments", q:"What did Avery, McLeod & McCarty prove?",
+    a:"DNA is the transforming principle — DNA is the hereditary material.",
+    d:["Protein is the transforming principle because only protease stopped transformation.","RNA is the hereditary material because destroying RNA halted bacterial transformation.","Both DNA and protein together constitute the hereditary material in bacteria."] },
+
+  { cat:"Scientists & Experiments", q:"What did Hershey & Chase prove with their phage experiment?",
+    a:"DNA — not protein — carries hereditary information into cells.",
+    d:["Protein — not DNA — is injected into bacteria during phage infection.","Both DNA and protein enter the bacterial cell and are required for viral replication.","RNA is the primary carrier of hereditary information, with DNA serving a structural role."] },
+
+  { cat:"Scientists & Experiments", q:"Which radioactive isotope did Hershey & Chase use to label phage DNA?",
+    a:"P32 (phosphorus-32), because phosphorus is present in DNA but not protein.",
+    d:["S35 (sulfur-35), because sulfur is present in DNA's phosphate backbone.","N15 (nitrogen-15), because nitrogen is present in DNA's nitrogenous bases.","C14 (carbon-14), because carbon forms the deoxyribose sugar backbone of DNA."] },
+
+  { cat:"Scientists & Experiments", q:"Which radioactive isotope did Hershey & Chase use to label phage protein?",
+    a:"S35 (sulfur-35), because sulfur is present in protein (cysteine/methionine) but not DNA.",
+    d:["P32 (phosphorus-32), because phosphorus is found in amino acid side chains.","N15 (nitrogen-15), because nitrogen is unique to the peptide bonds in proteins.","C14 (carbon-14), because carbon is the primary backbone element of all proteins."] },
+
+  { cat:"Scientists & Experiments", q:"What is Photo 51 and who produced it?",
+    a:"An X-ray crystallography image produced by Rosalind Franklin (1952) showing DNA's helical structure.",
+    d:["A model of the DNA double helix built by Watson & Crick using wire and tin plates.","An electron microscope image of a chromosome produced by Walther Flemming in 1882.","A diffraction pattern produced by Chargaff showing equal ratios of complementary bases."] },
+
+  { cat:"Scientists & Experiments", q:"What did Watson & Crick build in 1953, and what data did they use?",
+    a:"The 3D double helix model of DNA, using Franklin's X-ray data and Chargaff's rules.",
+    d:["The first genetic map for X-linked genes, using recombination frequency data from Drosophila.","A model of semiconservative replication, based on Meselson & Stahl's centrifugation data.","The chromosomal theory of heredity, using Mendel's pea plant crossing data."] },
+
+  { cat:"Scientists & Experiments", q:"What are Chargaff's rules?",
+    a:"In any DNA sample: A=T and G=C (the amount of each base equals its complementary base).",
+    d:["In any DNA sample: A=G and T=C (purines equal each other, pyrimidines equal each other).","DNA bases pair in triplets; A pairs with T and C, while G pairs with G and T.","The ratio of A+T to G+C is constant across all species at exactly 1:1."] },
+
+  { cat:"Scientists & Experiments", q:"What did Meselson & Stahl's experiment prove?",
+    a:"DNA replicates semiconservatively — each new double helix contains one old and one new strand.",
+    d:["DNA replicates conservatively — one daughter molecule contains entirely new strands, while the original is preserved intact.","DNA replicates dispersively — each strand in both daughter molecules is a mix of old and new segments.","DNA replication is bidirectional — two replication forks move in opposite directions from the origin."] },
+
+  { cat:"Scientists & Experiments", q:"What isotopes did Meselson & Stahl use and why?",
+    a:"Heavy N15 nitrogen to label parental DNA, then switched to light N14. DNA was centrifuged after each generation — an intermediate band confirmed semiconservative replication.",
+    d:["P32 and S35 to label DNA vs. protein separately, then centrifuged to separate phage components after infection.","C14 heavy carbon in parental DNA, switched to C12. Gel electrophoresis showed band shifts indicating dispersive replication.","Heavy N15 in both strands, then switched to N14. Autoradiography revealed that both strands were copied simultaneously."] },
+
+  { cat:"Scientists & Experiments", q:"Who is considered the Father of classical genetics and what did he discover?",
+    a:"Gregor Mendel — discovered the laws of segregation and independent assortment using pea plants.",
+    d:["Thomas Hunt Morgan — discovered the laws of segregation and independent assortment using Drosophila melanogaster.","William Bateson — discovered the laws of segregation and independent assortment using sweet peas.","Walther Flemming — discovered the laws of segregation and independent assortment by observing chromosomes in cell nuclei."] },
+
+  { cat:"Scientists & Experiments", q:"What did Thomas Hunt Morgan discover using Drosophila melanogaster?",
+    a:"Sex-linkage, validated the chromosomal theory of heredity, and showed chromosomes carry many genes in a specific order.",
+    d:["Transposable elements — he showed genes could jump between chromosomes and alter coat colour.","The law of independent assortment — he proved all genes on the same chromosome sort independently.","Semiconservative replication — he showed each daughter chromosome retains one parental chromatid."] },
+
+  { cat:"Scientists & Experiments", q:"What did Alfred Sturtevant create, and what data did he use?",
+    a:"The first genetic linkage map for 5 X-linked Drosophila genes, using recombination frequency data.",
+    d:["The first human karyotype, using G-banding to arrange chromosomes by size and centromere position.","The first genetic map based on pea plant crosses, using Mendel's law of independent assortment.","The first trinucleotide repeat map, using anticipation data from Morgan's Drosophila crosses."] },
+
+  { cat:"Scientists & Experiments", q:"What did Barbara McClintock discover in 1944?",
+    a:"Transposable elements (TEs) in corn — a TE called Dissociator could jump into the anthocyanin gene and change kernel colour.",
+    d:["The chromosomal basis of sex determination in corn — sex chromosomes control kernel pigmentation.","Crossing over between homologous chromosomes in corn, which she visualised using cytological markers.","Genomic imprinting in corn — the same gene produced different phenotypes depending on which parent it came from."] },
+
+  { cat:"Scientists & Experiments", q:"Who founded cytogenetics, and what did they describe?",
+    a:"Walther Flemming (1882) — described chromosomes as rod-shaped bodies in cell nuclei, founding the field of human cytogenetics.",
+    d:["William Bateson (1905) — described chromosomes as rod-shaped bodies after observing linkage in sweet pea crosses.","Reginald Punnett (1906) — described chromosomes as rod-shaped bodies and invented the square to model their segregation.","Thomas Hunt Morgan (1910) — described chromosomes as rod-shaped bodies while studying sex-linked traits in Drosophila."] },
+
+  { cat:"Scientists & Experiments", q:"Who invented the Punnett Square?",
+    a:"Reginald Punnett — working with William Bateson on sweet pea crosses that provided early evidence of genetic linkage.",
+    d:["Gregor Mendel — invented the square to display the ratios he observed in pea plant crosses.","Alfred Sturtevant — created the grid while mapping gene order on Drosophila chromosomes.","Thomas Hunt Morgan — designed the square to show X-linked inheritance patterns in fruit flies."] },
+
+  // ── CORE TERMS ──
+  { cat:"Core Terms", q:"What is a gene?",
+    a:"A DNA sequence that encodes a functional molecule (protein or catalytic RNA).",
+    d:["A specific combination of alleles on a single chromosome inherited as a unit.","The fixed physical location of a hereditary unit on a chromosome.","A heritable variation in DNA sequence between individuals in a population."] },
+
+  { cat:"Core Terms", q:"What is an allele?",
+    a:"Different versions of the same gene.",
+    d:["The fixed location of a gene on a chromosome.","The observable expression of an organism's genetic makeup.","A DNA sequence that encodes a functional molecule such as a protein."] },
+
+  { cat:"Core Terms", q:"What is a locus?",
+    a:"The fixed location of a gene on a chromosome.",
+    d:["A specific combination of alleles inherited together as a single unit.","A detectable phenotypic property such as eye colour or height.","The region of DNA between two nucleosomes on a chromatin fibre."] },
+
+  { cat:"Core Terms", q:"What is the difference between genotype and phenotype?",
+    a:"Genotype = the set of alleles an organism has. Phenotype = the observable expression of the genotype.",
+    d:["Genotype = the observable traits of an organism. Phenotype = the underlying allele combination.","Genotype = traits determined by environment. Phenotype = traits determined solely by DNA sequence.","Genotype = the dominant alleles only. Phenotype = the combined effect of dominant and recessive alleles."] },
+
+  { cat:"Core Terms", q:"What is the difference between homozygous and heterozygous?",
+    a:"Homozygous = both alleles at a locus are the same (AA or aa). Heterozygous = the two alleles are different (Aa).",
+    d:["Homozygous = two different alleles at a locus (Aa). Heterozygous = both alleles identical (AA or aa).","Homozygous = having alleles on two different chromosomes. Heterozygous = having alleles on the same chromosome.","Homozygous = a dominant phenotype. Heterozygous = an intermediate or recessive phenotype."] },
+
+  { cat:"Core Terms", q:"What is the difference between a character and a trait?",
+    a:"Character = a detectable phenotypic property (e.g. eye colour). Trait = a specific expression of a character (e.g. blue eyes).",
+    d:["Character = a specific expression of a phenotype (e.g. blue eyes). Trait = the broader category (e.g. eye colour).","Character = a genetically determined feature. Trait = an environmentally modified feature of the same character.","Character = the dominant expression. Trait = the recessive expression of the same locus."] },
+
+  { cat:"Core Terms", q:"What is complete dominance?",
+    a:"Heterozygote and dominant homozygote are phenotypically identical.",
+    d:["Heterozygote shows an intermediate phenotype between the two homozygotes.","Both alleles are fully and simultaneously expressed in the heterozygote.","The dominant allele is expressed only when two copies are present."] },
+
+  { cat:"Core Terms", q:"What is incomplete dominance?",
+    a:"Heterozygote shows an intermediate phenotype between the two homozygotes (e.g. red × white → pink snapdragons).",
+    d:["Heterozygote and dominant homozygote are phenotypically identical.","Both alleles are fully and simultaneously expressed in the heterozygote (e.g. Blood Type AB).","The recessive phenotype appears whenever at least one recessive allele is present."] },
+
+  { cat:"Core Terms", q:"What is co-dominance?",
+    a:"Both alleles are fully and simultaneously expressed in the heterozygote (e.g. Blood Type AB; sickle-cell trait).",
+    d:["Heterozygote shows an intermediate phenotype blending the two homozygote phenotypes.","Heterozygote is phenotypically identical to the dominant homozygote.","One allele is silenced in the heterozygote so only the dominant allele is expressed."] },
+
+  { cat:"Core Terms", q:"What is penetrance?",
+    a:"The proportion of individuals with a given genotype who actually express the associated phenotype (quantitative).",
+    d:["The severity of the phenotype produced by a particular allele in individuals who express it (qualitative).","The proportion of alleles in a population that are expressed in the dominant rather than recessive form.","The frequency with which a mutant allele is inherited by offspring across generations."] },
+
+  { cat:"Core Terms", q:"What is expressivity?",
+    a:"The degree of severity of the phenotype produced by a particular allele (qualitative — ranges from mild to severe).",
+    d:["The proportion of individuals carrying a genotype who express the associated phenotype.","The frequency at which a given allele produces a gain-of-function versus loss-of-function effect.","The likelihood that a recessive allele will be expressed when paired with a dominant allele."] },
+
+  { cat:"Core Terms", q:"What is epistasis?",
+    a:"A gene at one locus alters the phenotypic expression of a gene at a different locus.",
+    d:["A single mutation that produces multiple, seemingly unrelated phenotypic effects.","The phenomenon where heterozygotes show an intermediate phenotype between the two homozygotes.","The masking of one allele by another allele at the same locus."] },
+
+  { cat:"Core Terms", q:"What is pleiotropy?",
+    a:"A single gene mutation that produces multiple, seemingly unrelated phenotypic effects (e.g. Progeria affects skin, bones, and cardiovascular system).",
+    d:["A gene at one locus that alters the phenotypic expression of a gene at a different locus.","A trait that is influenced by multiple genes at different loci simultaneously.","A mutation that causes increasing severity of phenotype in successive generations."] },
+
+  { cat:"Core Terms", q:"What is the difference between a polygenic trait and a multifactorial trait?",
+    a:"Polygenic = influenced by multiple genes at different loci. Multifactorial = influenced by multiple genes AND environmental factors.",
+    d:["Polygenic = influenced by one gene with multiple alleles. Multifactorial = influenced by multiple genes with no environmental input.","Polygenic = influenced by environmental factors only. Multifactorial = influenced by a single gene with variable expressivity.","Polygenic = a trait controlled by genes on multiple chromosomes. Multifactorial = a trait controlled by linked genes on the same chromosome."] },
+
+  { cat:"Core Terms", q:"What is a gain-of-function (GoF) mutation?",
+    a:"Mutation causes a gene to produce a protein that does something new or more than normal — usually dominant.",
+    d:["Mutation causes a gene to stop producing its normal protein — usually recessive.","Mutation restores a previously lost function to a gene — usually acts as a suppressor.","Mutation causes a gene to be expressed in the wrong tissue or at the wrong time — usually recessive."] },
+
+  { cat:"Core Terms", q:"What is a loss-of-function (LoF) mutation?",
+    a:"Mutation causes a gene to stop producing its normal protein or reduces its activity — usually recessive.",
+    d:["Mutation causes a gene to produce a protein with a new, abnormal activity — usually dominant.","Mutation causes overexpression of a normal gene product — usually results in a dominant phenotype.","Mutation that reverses a previous gain-of-function mutation — usually acts as an intragenic suppressor."] },
+
+  { cat:"Core Terms", q:"What is anticipation?",
+    a:"Increasing disease severity or decreasing age of onset in successive generations, caused by expansion of trinucleotide repeats.",
+    d:["Decreasing disease severity in successive generations due to compensatory mutations elsewhere in the genome.","The phenomenon where a dominant mutation skips a generation and reappears in the grandchildren.","Increasing penetrance of a recessive allele over generations as it becomes more common in the population."] },
+
+  { cat:"Core Terms", q:"What is the Law of Segregation?",
+    a:"The two alleles at a locus separate during meiosis so each gamete receives only one allele. Mechanistically, homologous chromosomes separate at Meiosis I.",
+    d:["Alleles of different genes on different chromosomes sort independently into gametes during Meiosis I.","Both alleles at a locus are retained in every gamete, but only one is expressed after fertilization.","Alleles separate during mitosis so each daughter cell receives an identical copy of both alleles."] },
+
+  { cat:"Core Terms", q:"What is the Law of Independent Assortment?",
+    a:"Alleles of different genes assort independently into gametes (unless linked). Due to random orientation of tetrads at Metaphase I — 2^23 possible combinations.",
+    d:["The two alleles at a single locus always separate so each gamete receives exactly one allele.","Genes on the same chromosome always assort independently because crossing over occurs between every pair.","Alleles assort independently only when they are on sex chromosomes; autosomal genes are always linked."] },
+
+  { cat:"Core Terms", q:"When do you use the Multiplication Rule in genetics probability?",
+    a:"When two or more independent events must BOTH occur together ('AND') — multiply their individual probabilities.",
+    d:["When either of two mutually exclusive events can satisfy the outcome ('OR') — multiply their probabilities.","When events are dependent on each other — multiply the probability of the first by the conditional probability.","When calculating the probability that at least one of several events occurs — multiply 1 minus each probability."] },
+
+  { cat:"Core Terms", q:"When do you use the Addition Rule in genetics probability?",
+    a:"When either of two mutually exclusive events can satisfy the outcome ('OR') — add their individual probabilities.",
+    d:["When two independent events must both occur simultaneously ('AND') — add their individual probabilities.","When events are not mutually exclusive — add the probabilities and subtract the overlap.","When calculating the combined probability of linked genes — add the recombination frequencies together."] },
+
+  // ── LINKAGE & MAPPING ──
+  { cat:"Linkage & Mapping", q:"What is synteny?",
+    a:"Two or more genes located on the same chromosome.",
+    d:["Two genes that always assort independently because they are on different chromosomes.","Two genes that are always inherited together because no crossing over occurs between them.","The physical distance between two genes measured in base pairs on the same chromosome."] },
+
+  { cat:"Linkage & Mapping", q:"What is recombination frequency (r)?",
+    a:"The proportion of offspring that are recombinant: r = recombinants ÷ total offspring. Maximum = 0.5 for unlinked genes.",
+    d:["The proportion of parental-type offspring produced in a dihybrid cross; ranges from 0.5 to 1.","The number of crossover events per chromosome per meiosis, measured directly by cytology.","The frequency at which a transposable element moves between two gene loci on the same chromosome."] },
+
+  { cat:"Linkage & Mapping", q:"What is a centiMorgan (cM)?",
+    a:"A unit of genetic distance: 1 cM = 1 map unit = 1% recombination frequency.",
+    d:["A unit of physical distance on a chromosome: 1 cM = 1 million base pairs (Mb).","A unit of genetic distance: 1 cM = 10% recombination frequency between two loci.","A unit measuring the number of crossover events per chromosome per generation."] },
+
+  { cat:"Linkage & Mapping", q:"What is the difference between cis (coupling) and trans (repulsion) arrangement?",
+    a:"Cis/coupling = both dominant alleles on the SAME chromosome (AB/ab). Trans/repulsion = dominant alleles on OPPOSITE chromosomes (Ab/aB).",
+    d:["Cis = dominant alleles on opposite chromosomes (Ab/aB). Trans = both dominant alleles on the same chromosome (AB/ab).","Cis = alleles are unlinked and assort independently. Trans = alleles are linked and are inherited together.","Cis = refers to genes on autosomes. Trans = refers to genes on sex chromosomes inherited from different parents."] },
+
+  { cat:"Linkage & Mapping", q:"What is a test cross in linkage analysis?",
+    a:"Crossing a dihybrid (AaBb) with a double recessive (aabb) to reveal the frequency of each gamete type produced by the dihybrid.",
+    d:["Crossing two F1 heterozygotes together to produce an F2 ratio that reveals whether genes are linked.","Crossing a parent with an unknown genotype with a dominant homozygote to identify recessive alleles.","Crossing two true-breeding parental strains to produce an F1 generation for subsequent linkage analysis."] },
+
+  { cat:"Linkage & Mapping", q:"What is the null hypothesis in a chi-square (X²) test?",
+    a:"Differences between observed and expected results are due to chance alone — there is no real effect.",
+    d:["The observed and expected results differ significantly, confirming that the genes are linked.","The p-value is less than alpha, meaning the null hypothesis should be accepted.","The genes assort independently; any deviation from 9:3:3:1 confirms linkage."] },
+
+  { cat:"Linkage & Mapping", q:"What is a Type I error in statistical testing?",
+    a:"Rejecting a null hypothesis that is actually true (false positive). The rate of Type I error equals alpha.",
+    d:["Failing to reject a null hypothesis that is actually false (false negative). Rate = 1 minus statistical power.","Accepting a p-value that exceeds alpha and incorrectly concluding that genes are linked.","Calculating an incorrect chi-square value by using the wrong number of degrees of freedom."] },
+
+  { cat:"Linkage & Mapping", q:"What is a haplotype?",
+    a:"A specific combination of alleles or SNPs on a single chromosome that are inherited together as a unit.",
+    d:["The complete set of chromosomes from a single gamete, including one copy of each homologous pair.","A region of a chromosome that is completely free from crossover events across many generations.","A single nucleotide position in the genome that varies between individuals in a population."] },
+
+  { cat:"Linkage & Mapping", q:"What is a SNP?",
+    a:"Single Nucleotide Polymorphism — a variation at a single nucleotide position in the genome that differs between individuals.",
+    d:["Short Nucleotide Probe — a fluorescent sequence used to hybridise to chromosomes in FISH analysis.","A trinucleotide repeat expansion at a single locus that causes disease when copy number exceeds a threshold.","A synonymous base change that does not alter the amino acid sequence but creates a new restriction site."] },
+
+  // ── CYTOGENETICS ──
+  { cat:"Cytogenetics", q:"What is a karyotype?",
+    a:"The complete set of chromosomes from a cell, photographed and arranged by size and centromere position.",
+    d:["A fluorescent hybridisation image showing the locations of specific genes on metaphase chromosomes.","A DNA profile showing restriction fragment length polymorphisms across all 23 chromosome pairs.","A staining pattern of polytene chromosomes used to identify gene loci in Drosophila."] },
+
+  { cat:"Cytogenetics", q:"What is G-banding?",
+    a:"A Giemsa staining technique that produces characteristic dark and light bands on metaphase chromosomes, used to identify individual chromosomes.",
+    d:["A FISH technique using green fluorescent probes to detect specific chromosomal sequences.","A silver-staining technique used to visualise the nucleolus organiser regions on acrocentric chromosomes.","A DNA methylation assay used to distinguish active euchromatin from inactive heterochromatin."] },
+
+  { cat:"Cytogenetics", q:"What is a nucleosome?",
+    a:"DNA wrapped 1.67× around a histone octamer composed of two copies each of H2A, H2B, H3, and H4.",
+    d:["DNA wrapped around a single histone H1 molecule; H1 acts as the linker between adjacent nucleosomes.","A structure formed by the looping of a 30 nm chromatin fibre around scaffold proteins in the chromosome.","DNA compacted by four core histones arranged in a linear array stabilised by histone H1."] },
+
+  { cat:"Cytogenetics", q:"What is the difference between euchromatin and heterochromatin?",
+    a:"Euchromatin = loosely packed chromatin that is transcriptionally ACTIVE. Heterochromatin = tightly packed, transcriptionally INACTIVE.",
+    d:["Euchromatin = tightly packed, transcriptionally inactive. Heterochromatin = loosely packed and transcriptionally active.","Euchromatin = found only in centromeric regions. Heterochromatin = found in gene-rich regions of chromosomes.","Euchromatin = stains darkly with Giemsa. Heterochromatin = stains lightly with Giemsa."] },
+
+  { cat:"Cytogenetics", q:"What is the function of telomeres?",
+    a:"TTAGGG repeated thousands of times at chromosome ends; protects chromosomes from degradation, end-to-end fusion, and DNA damage signalling.",
+    d:["Repeated satellite DNA sequences at the centromere; required for kinetochore assembly and spindle fibre attachment.","Linker DNA between nucleosomes at chromosome ends; prevents exonuclease activity from degrading core DNA.","G-rich repeated sequences in the nucleolus organiser region; required for ribosomal RNA gene transcription."] },
+
+  { cat:"Cytogenetics", q:"What do p arm and q arm mean on a chromosome?",
+    a:"p arm = the short arm (p = petit, French for small). q arm = the long arm.",
+    d:["p arm = the proximal arm closest to the centromere. q arm = the distal arm farthest from the centromere.","p arm = the arm containing the telomere. q arm = the arm containing the centromere.","p arm = the arm derived from the paternal chromosome. q arm = the arm derived from the maternal chromosome."] },
+
+  { cat:"Cytogenetics", q:"What is the difference between metacentric, submetacentric, and acrocentric chromosomes?",
+    a:"Metacentric = centromere at the centre (p≈q). Submetacentric = slightly off-centre (p<q). Acrocentric = centromere very close to one end (very short p arm).",
+    d:["Metacentric = centromere near one end. Submetacentric = centromere at the centre. Acrocentric = centromere slightly off-centre.","Metacentric = one arm only (no p arm). Submetacentric = p arm very short. Acrocentric = p and q arms roughly equal.","Metacentric = chromosomes that pair in meiosis I. Submetacentric = chromosomes that fail to pair. Acrocentric = sex chromosomes."] },
+
+  { cat:"Cytogenetics", q:"What is aneuploidy?",
+    a:"A chromosome number that is NOT an exact multiple of the haploid set (e.g. 2n±1). Caused by nondisjunction during meiosis.",
+    d:["A chromosome number that IS an exact multiple of the haploid set (e.g. 3n, 4n). Caused by failed cytokinesis.","The loss of a chromosomal segment due to two simultaneous double-strand breaks within one chromosome.","An abnormal chromosome number caused by a reciprocal translocation between two non-homologous chromosomes."] },
+
+  { cat:"Cytogenetics", q:"What is polyploidy?",
+    a:"A chromosome number that IS an exact multiple of the haploid set (e.g. triploidy = 3n, tetraploidy = 4n).",
+    d:["A chromosome number that is NOT an exact multiple of the haploid set, caused by nondisjunction.","The presence of one extra copy of a single chromosome (2n+1 = 47 in humans).","A genome-wide duplication of specific chromosomal segments caused by unequal crossing over."] },
+
+  { cat:"Cytogenetics", q:"What is nondisjunction?",
+    a:"Failure of homologous chromosomes (Meiosis I) or sister chromatids (Meiosis II / mitosis) to separate properly, resulting in aneuploid daughter cells.",
+    d:["Failure of the nuclear envelope to break down during prophase, preventing chromosome segregation.","Failure of the spindle fibres to attach to centromeres, causing chromosomes to remain at the metaphase plate.","Failure of the cell plate to form during cytokinesis, producing a cell with duplicated chromosomes."] },
+
+  { cat:"Cytogenetics", q:"What is the difference between a pericentric and paracentric inversion?",
+    a:"Pericentric inversion = the inverted segment INCLUDES the centromere. Paracentric = the inverted segment does NOT include the centromere.",
+    d:["Pericentric = the inversion is on the p arm only. Paracentric = the inversion spans both p and q arms.","Pericentric = inversion affects only heterochromatin. Paracentric = inversion affects only euchromatin.","Pericentric = inversion includes a telomere. Paracentric = inversion is entirely within the interstitial region."] },
+
+  { cat:"Cytogenetics", q:"What is a Robertsonian translocation?",
+    a:"The q arms of two acrocentric chromosomes fuse, and the tiny p arms are lost; results in 44 chromosomes with usually normal phenotype.",
+    d:["Both chromosomes break and exchange terminal segments; results in 46 chromosomes and is associated with cancer.","A segment of one chromosome inserts into a non-homologous chromosome without reciprocal exchange.","The long arm of one chromosome duplicates and fuses with the short arm of its homologue."] },
+
+  { cat:"Cytogenetics", q:"What is the difference between amniocentesis and CVS?",
+    a:"Amniocentesis = sampling fetal cells from amniotic fluid around week 16, lower miscarriage risk. CVS = sampling from placenta via catheter weeks 8–13, higher miscarriage risk but earlier.",
+    d:["Amniocentesis = sampling placental cells via catheter in weeks 8–13, higher miscarriage risk. CVS = sampling amniotic fluid around week 16, lower risk.","Amniocentesis = a blood test measuring fetal DNA in maternal circulation. CVS = direct sampling of fetal cells from the uterine lining.","Amniocentesis = used only for chromosomal abnormalities. CVS = used only for single-gene disorders such as CF and Tay-Sachs."] },
+
+  { cat:"Cytogenetics", q:"What is FISH?",
+    a:"Fluorescent In Situ Hybridization — fluorescent DNA probes bind to specific chromosomal sequences on metaphase chromosomes to detect deletions or trisomies.",
+    d:["Fragment Interval Sequencing Hybridization — a PCR-based technique to sequence specific chromosomal regions from fetal DNA.","Fluorescent Isotope Separation Hybridization — uses radioactive probes to distinguish maternal from paternal chromosomes.","Fluorescent In Situ Staining — a Giemsa-based banding technique that produces coloured bands to identify chromosomes."] },
+
+  { cat:"Cytogenetics", q:"What is satellite DNA?",
+    a:"Tandem repetitive sequences (171 bp repeats) found in centromeric regions, bound by cen-proteins essential for kinetochore and spindle fibre attachment.",
+    d:["TTAGGG repeats found at chromosome ends that protect against degradation and end-to-end chromosome fusions.","Repetitive Alu sequences (~300 bp) scattered throughout the genome that can act as transposable elements.","Repetitive rDNA sequences in the nucleolus organiser region that encode ribosomal RNA."] },
+
+  // ── DNA STRUCTURE ──
+  { cat:"DNA Structure", q:"What is the difference between a nucleoside and a nucleotide?",
+    a:"Nucleoside = sugar + nitrogenous base (no phosphate). Nucleotide = sugar + nitrogenous base + one or more phosphate groups.",
+    d:["Nucleoside = sugar + nitrogenous base + phosphate. Nucleotide = sugar + nitrogenous base only.","Nucleoside = found only in RNA. Nucleotide = found only in DNA. Both consist of sugar, base, and phosphate.","Nucleoside = a pyrimidine base attached to ribose. Nucleotide = a purine base attached to deoxyribose."] },
+
+  { cat:"DNA Structure", q:"What is the difference between deoxyribose and ribose?",
+    a:"Deoxyribose (in DNA) lacks a hydroxyl group at the 2' carbon. Ribose (in RNA) has a hydroxyl group at the 2' carbon.",
+    d:["Deoxyribose (in RNA) lacks a hydroxyl group at the 3' carbon. Ribose (in DNA) has a hydroxyl group at the 3' carbon.","Deoxyribose has 5 carbons; ribose has 6 carbons. Both are pentose sugars but with different ring structures.","Deoxyribose is a hexose sugar found in DNA. Ribose is a pentose sugar found in RNA."] },
+
+  { cat:"DNA Structure", q:"What are the purines?",
+    a:"Adenine (A) and Guanine (G) — double-ring nitrogenous bases.",
+    d:["Cytosine (C) and Thymine (T) — double-ring nitrogenous bases found in DNA.","Adenine (A) and Uracil (U) — double-ring nitrogenous bases shared between DNA and RNA.","Guanine (G) and Cytosine (C) — double-ring nitrogenous bases that form three hydrogen bonds."] },
+
+  { cat:"DNA Structure", q:"What are the pyrimidines?",
+    a:"Cytosine (C), Thymine (T), and Uracil (U) — single-ring nitrogenous bases.",
+    d:["Adenine (A) and Guanine (G) — single-ring nitrogenous bases found in both DNA and RNA.","Cytosine (C) and Adenine (A) — single-ring bases; Adenine replaces Uracil in DNA.","Guanine (G), Thymine (T), and Uracil (U) — single-ring nitrogenous bases."] },
+
+  { cat:"DNA Structure", q:"How many hydrogen bonds form between A–T versus G–C base pairs?",
+    a:"A–T: 2 hydrogen bonds. G–C: 3 hydrogen bonds.",
+    d:["A–T: 3 hydrogen bonds. G–C: 2 hydrogen bonds.","A–T: 2 hydrogen bonds. G–C: 2 hydrogen bonds — the extra stability of G–C comes from base stacking, not H-bonding.","A–T: 1 hydrogen bond. G–C: 3 hydrogen bonds — explaining why GC-rich DNA denatures at much higher temperatures."] },
+
+  { cat:"DNA Structure", q:"What is the difference between the 5' end and the 3' end of a DNA strand?",
+    a:"5' end = free phosphate group attached to carbon 5 of the sugar. 3' end = free hydroxyl (–OH) group attached to carbon 3 of the sugar.",
+    d:["5' end = free hydroxyl group attached to carbon 5. 3' end = free phosphate group attached to carbon 3.","5' end = the end where DNA synthesis begins. 3' end = the end where the RNA primer is attached.","5' end = the end with the nitrogenous base exposed. 3' end = the end with the phosphate backbone exposed."] },
+
+  { cat:"DNA Structure", q:"What does antiparallel mean in the context of DNA structure?",
+    a:"The two strands of the double helix run in opposite directions — one strand runs 5'→3' while the other runs 3'→5'.",
+    d:["The two strands are complementary — wherever one strand has A, the other has T, and wherever one has G, the other has C.","The two strands coil in opposite directions — one strand forms a right-handed helix, the other a left-handed helix.","The two strands have unequal lengths — one template strand is longer than the other at replication forks."] },
+
+  { cat:"DNA Structure", q:"What are the two nucleotide synthesis pathways?",
+    a:"De novo synthesis (building nucleotides from scratch from simple precursors) and the salvage pathway (recycling pre-existing nucleosides or bases).",
+    d:["The replication pathway (making nucleotides during S phase) and the repair pathway (making nucleotides in response to DNA damage).","Base excision synthesis (replacing single damaged bases) and nucleotide excision synthesis (replacing large DNA segments).","The anabolic pathway (purines synthesised from scratch) and the catabolic pathway (pyrimidines recycled from existing bases)."] },
+
+  { cat:"DNA Structure", q:"What two forces stabilise the DNA double helix?",
+    a:"Hydrogen bonding between complementary base pairs AND hydrophobic base-stacking interactions between adjacent bases.",
+    d:["Covalent phosphodiester bonds between base pairs AND ionic interactions between the negatively charged backbones.","Hydrogen bonding between the sugar–phosphate backbones AND hydrophobic interactions between the nitrogenous bases and the backbone.","Disulfide bonds between complementary bases AND van der Waals forces between the phosphate groups."] },
+
+  { cat:"DNA Structure", q:"Thymine is found in DNA; what replaces it in RNA, and why?",
+    a:"Uracil (U) replaces Thymine in RNA. Uracil lacks the methyl group at carbon 5 that Thymine has, making it cheaper to synthesise.",
+    d:["Cytosine (C) replaces Thymine in RNA — RNA uses only A, C, G, and U, where U pairs with G instead of A.","Adenine replaces Thymine in RNA — the two strands of RNA are antiparallel so Adenine occupies the Thymine position.","Guanine replaces Thymine in RNA — RNA does not require the AT base pair and uses GU wobble pairs instead."] },
+
+  // ── DNA REPLICATION ──
+  { cat:"DNA Replication", q:"What is semiconservative replication?",
+    a:"Each new DNA double helix contains one original (parental) strand and one newly synthesised (daughter) strand.",
+    d:["Each new DNA double helix is composed entirely of newly synthesised strands; the original strands remain together.","Each strand of both daughter molecules is a mixture of old and new DNA segments distributed randomly.","One daughter molecule contains both parental strands; the other contains two entirely new strands."] },
+
+  { cat:"DNA Replication", q:"What is the difference between the leading and lagging strand?",
+    a:"Leading strand: synthesised continuously toward the replication fork in the 5'→3' direction. Lagging strand: synthesised discontinuously away from the fork as Okazaki fragments.",
+    d:["Leading strand: synthesised discontinuously as Okazaki fragments toward the fork. Lagging strand: synthesised continuously away from the fork.","Leading strand: synthesised by DNA Pol delta continuously. Lagging strand: synthesised by DNA Pol epsilon discontinuously.","Leading strand: requires a new RNA primer for each nucleotide added. Lagging strand: requires only a single primer for the entire strand."] },
+
+  { cat:"DNA Replication", q:"What are Okazaki fragments?",
+    a:"Short sequences of 150–200 nucleotides synthesised discontinuously on the lagging strand, each initiated by its own RNA primer.",
+    d:["Short RNA sequences of 10–20 nucleotides synthesised by Primase to initiate DNA replication on the leading strand.","Fragments of parental DNA released when Helicase unwinds the double helix at the replication fork.","Short double-stranded DNA segments produced when Topoisomerase relieves supercoiling ahead of the replication fork."] },
+
+  { cat:"DNA Replication", q:"What is the role of Primase in DNA replication?",
+    a:"Synthesises short RNA primers (5–10 nucleotides) complementary to the template strand, providing a free 3'–OH for DNA polymerase to extend.",
+    d:["Removes RNA primers from Okazaki fragments and replaces them with DNA nucleotides.","Unwinds the double helix at the origin of replication to expose the template strands.","Joins Okazaki fragments by catalysing phosphodiester bond formation between adjacent DNA fragments."] },
+
+  { cat:"DNA Replication", q:"What is the role of DNA Helicase?",
+    a:"Unwinds and separates the two parental DNA strands at the replication fork by breaking hydrogen bonds between base pairs.",
+    d:["Relieves positive supercoiling tension that builds up ahead of the replication fork by introducing negative supercoils.","Keeps the separated template strands apart and prevents them from re-annealing before synthesis occurs.","Synthesises RNA primers on both the leading and lagging strands to initiate new DNA synthesis."] },
+
+  { cat:"DNA Replication", q:"What is the role of Topoisomerase/Gyrase?",
+    a:"Relieves positive supercoiling tension that accumulates ahead of the advancing replication fork by cutting and rejoining DNA strands.",
+    d:["Unwinds the double helix by breaking the hydrogen bonds between the two parental strands at the fork.","Joins adjacent Okazaki fragments by sealing nicks in the sugar–phosphate backbone of the lagging strand.","Synthesises the RNA primer that provides the free 3'–OH end needed by DNA polymerase."] },
+
+  { cat:"DNA Replication", q:"What does DNA Polymerase epsilon (ε) do?",
+    a:"Synthesises the leading strand continuously in the 5'→3' direction toward the replication fork.",
+    d:["Synthesises the lagging strand discontinuously as Okazaki fragments and removes RNA primers.","Replicates mitochondrial DNA and is the only polymerase active in the mitochondrial matrix.","Fills in single-nucleotide gaps during base excision repair after DNA glycosylase removes a damaged base."] },
+
+  { cat:"DNA Replication", q:"What does DNA Polymerase delta (δ) do?",
+    a:"Synthesises the lagging strand discontinuously as Okazaki fragments AND removes RNA primers, replacing them with DNA.",
+    d:["Synthesises the leading strand continuously toward the replication fork in a processive manner.","Replicates the mitochondrial genome and proofreads mitochondrial DNA for oxidative damage.","Fills in gaps during nucleotide excision repair after endonucleases excise a large damaged region."] },
+
+  { cat:"DNA Replication", q:"What does DNA Polymerase gamma (γ) do?",
+    a:"Replicates mitochondrial DNA — it is the only DNA polymerase active inside the mitochondria.",
+    d:["Synthesises the leading strand in the nucleus during S-phase replication of nuclear chromosomes.","Performs base excision repair in the nucleus by filling in single-nucleotide gaps after glycosylase action.","Synthesises RNA primers in the mitochondria that are used by the main replication machinery."] },
+
+  { cat:"DNA Replication", q:"What does DNA Polymerase beta (β) do?",
+    a:"Fills in single-nucleotide gaps during base excision repair (BER) in the nucleus.",
+    d:["Synthesises the lagging strand discontinuously and removes RNA primers during nuclear DNA replication.","Replicates mitochondrial DNA and has the highest fidelity of all eukaryotic DNA polymerases.","Synthesises RNA primers on the leading strand during S-phase to initiate each new replication event."] },
+
+  { cat:"DNA Replication", q:"What is the role of DNA Ligase in replication?",
+    a:"Seals the nicks between adjacent Okazaki fragments by catalysing phosphodiester bond formation, completing lagging strand synthesis.",
+    d:["Removes RNA primers from Okazaki fragments and replaces them with DNA nucleotides in the 5'→3' direction.","Joins the two daughter DNA molecules after they separate from the replication fork at the termination site.","Unwinds the double helix by breaking hydrogen bonds between base pairs at the origin of replication."] },
+
+  { cat:"DNA Replication", q:"What is Telomerase and where is it active?",
+    a:"An enzyme that extends telomeres using its own RNA template and reverse transcriptase activity. Active in stem cells, germline cells, and cancer cells.",
+    d:["A helicase that unwinds the T-loop at chromosome ends to allow access for the replication machinery.","A DNA repair enzyme that removes oxidative damage from TTAGGG repeats at chromosome ends.","An endonuclease that clips the 3' overhang at telomeres to prevent it from acting as a replication primer."] },
+
+  { cat:"DNA Replication", q:"What is the role of SSBP (Single-strand binding protein)?",
+    a:"Binds to separated single-stranded DNA at the replication fork, keeping the strands apart and preventing re-annealing until they are copied.",
+    d:["Binds to the 3' overhang at telomeres to protect it from degradation and prevent end-to-end chromosome fusions.","Recruits RNA primase to the origin of replication to initiate primer synthesis on both template strands.","Stabilises the RNA primers on Okazaki fragments until DNA polymerase delta replaces them with DNA."] },
+
+  { cat:"DNA Replication", q:"What are T-loops and D-loops at telomeres?",
+    a:"Protective structures formed when the single-stranded 3' telomere overhang loops back and invades the double-stranded telomeric repeat region, preventing the DNA damage response from being triggered.",
+    d:["Structures formed when Telomerase extends the 5' end of the telomere, filling in the gap left by lagging strand synthesis.","Stem-loop structures formed in telomeric RNA that regulate Telomerase access to chromosome ends.","Protective structures formed by Shelterin proteins folding the telomeric double-stranded region back on itself."] },
+
+  { cat:"DNA Replication", q:"What do Shelterin proteins do?",
+    a:"A complex of proteins that bind to telomeres, stabilise the T-loop structure, and suppress the DNA damage response at chromosome ends.",
+    d:["Proteins that recruit Telomerase to elongate telomeres during S phase in all somatic cells.","Proteins that anchor telomeres to the nuclear envelope and regulate chromosome positioning during meiosis.","Histone-like proteins that compact telomeric chromatin into heterochromatin to silence subtelomeric genes."] },
+
+  // ── MUTATIONS & REPAIR ──
+  { cat:"Mutations & Repair", q:"What is the difference between germline and somatic mutations?",
+    a:"Germline = in gametes; transmitted to offspring and important for evolution. Somatic = in non-reproductive cells; passed to daughter cells only, not to offspring.",
+    d:["Germline = in non-reproductive cells; affects only the organism and is not heritable. Somatic = in gametes; transmitted to offspring.","Germline = spontaneous mutations arising during DNA replication. Somatic = mutations induced by environmental mutagens.","Germline = mutations with dominant effects. Somatic = mutations with recessive effects that only manifest in homozygotes."] },
+
+  { cat:"Mutations & Repair", q:"What is a silent (synonymous) mutation?",
+    a:"A base change that does NOT alter the amino acid due to redundancy in the genetic code. Not always harmless — e.g. Progeria's silent mutation creates a cryptic splice site.",
+    d:["A base change that results in a different amino acid with very similar chemical properties, preserving protein function.","A base change that creates a premature stop codon, producing a truncated and usually non-functional protein.","A mutation in an intron that has no effect because intronic sequences are removed during RNA splicing."] },
+
+  { cat:"Mutations & Repair", q:"What is a missense mutation?",
+    a:"A base change that results in a DIFFERENT amino acid being incorporated into the protein (e.g. Sickle-cell anemia: Glu→Val in beta-globin).",
+    d:["A base change that does not alter the amino acid sequence due to codon redundancy.","A base change that creates a premature stop codon, producing a truncated protein.","An insertion or deletion of one base that shifts the reading frame downstream of the mutation."] },
+
+  { cat:"Mutations & Repair", q:"What is a nonsense mutation?",
+    a:"A base change that converts a codon for an amino acid into a premature STOP codon, producing a truncated protein (e.g. Beta-Thalassemia).",
+    d:["A base change that converts a stop codon into an amino acid codon, producing an elongated protein.","A base change that substitutes one amino acid for another with very different chemical properties.","An insertion or deletion that shifts the entire reading frame of the downstream sequence."] },
+
+  { cat:"Mutations & Repair", q:"What is a sense mutation?",
+    a:"A base change that converts a STOP codon into a codon for an amino acid, producing an elongated protein with extra amino acids at the C-terminus.",
+    d:["A base change that converts an amino acid codon into a premature stop codon, truncating the protein.","A synonymous substitution that does not change the amino acid because of codon redundancy.","An insertion that restores the reading frame by compensating for a prior deletion elsewhere in the gene."] },
+
+  { cat:"Mutations & Repair", q:"What is a frameshift mutation?",
+    a:"Insertion or deletion of a number of bases that is NOT a multiple of 3, shifting the entire downstream reading frame. Usually the most damaging type of point mutation.",
+    d:["Insertion or deletion of exactly 3 bases, which adds or removes one amino acid without affecting the rest of the reading frame.","A base change that creates a premature stop codon by converting a sense codon to a nonsense codon.","Exchange of a purine for a pyrimidine (transversion) that shifts the register of base pairing in the double helix."] },
+
+  { cat:"Mutations & Repair", q:"What is a pyrimidine dimer?",
+    a:"A covalent cross-link between two adjacent pyrimidines (C–C, C–T, or T–T) on the same strand caused by UV light, creating a structural kink that blocks replication.",
+    d:["A hydrogen-bonded mismatch between a pyrimidine on one strand and a pyrimidine on the complementary strand, caused by tautomeric shifts.","A cross-link between guanine residues on opposite strands caused by alkylating agents such as cisplatin.","A break in the phosphodiester backbone between two adjacent pyrimidines caused by ionising radiation."] },
+
+  { cat:"Mutations & Repair", q:"What is an intercalating agent?",
+    a:"A flat aromatic molecule (e.g. ethidium bromide) that inserts between adjacent base pairs, distorting the helix and causing insertions or deletions during replication.",
+    d:["A chemical that alkylates guanine residues, causing G–C to A–T transitions during subsequent replication.","A molecule that forms covalent cross-links between complementary strands, blocking strand separation during replication.","A reactive oxygen species that oxidises guanine to 8-oxoguanine, causing G–C to T–A transversions."] },
+
+  { cat:"Mutations & Repair", q:"What is the difference between a mutagen and a carcinogen?",
+    a:"Mutagen = any agent that damages DNA or the repair process. Carcinogen = any agent that increases risk of tumour formation. Most mutagens are carcinogens, but not all carcinogens act by mutating DNA directly.",
+    d:["Mutagen = a physical agent (e.g. UV, X-rays). Carcinogen = a chemical agent (e.g. benzene). Both damage DNA by different mechanisms.","Mutagen = causes heritable changes in germline DNA. Carcinogen = causes changes only in somatic DNA that lead to uncontrolled cell division.","Mutagen = increases the rate of spontaneous mutation. Carcinogen = suppresses DNA repair mechanisms without directly damaging DNA."] },
+
+  { cat:"Mutations & Repair", q:"What is proofreading during DNA replication?",
+    a:"The 3'→5' exonuclease activity of DNA polymerase that detects and excises incorrectly incorporated nucleotides immediately after they are added.",
+    d:["The activity of Mut proteins that scan newly synthesised DNA for mismatched bases after replication is complete.","The removal of RNA primers by DNA Pol delta and their replacement with correctly matched DNA nucleotides.","The activity of AP endonuclease that removes abasic sites created by DNA glycosylase during base excision repair."] },
+
+  { cat:"Mutations & Repair", q:"What does mismatch repair (MMR) fix?",
+    a:"Single mismatched base pairs that escape proofreading after replication, removed and replaced by Mut proteins.",
+    d:["Pyrimidine dimers and other bulky lesions caused by UV light; endonucleases excise a large oligonucleotide around the damage.","Double-strand breaks repaired by using the homologous chromosome as a high-fidelity template.","Single damaged bases (e.g. oxidised guanine) recognised and removed by a specific DNA glycosylase."] },
+
+  { cat:"Mutations & Repair", q:"What does Base Excision Repair (BER) fix?",
+    a:"Single chemically damaged bases (e.g. oxidised, deaminated, or alkylated bases). DNA glycosylase removes the damaged base, AP endonuclease removes the sugar, and the gap is filled in.",
+    d:["Large helix-distorting lesions such as pyrimidine dimers; endonucleases cut on both sides of the lesion and remove an oligonucleotide.","Double-strand breaks using the sister chromatid as a template for high-fidelity repair during S and G2 phase.","Mismatched base pairs left after replication errors that escape the proofreading activity of DNA polymerase."] },
+
+  { cat:"Mutations & Repair", q:"What does Nucleotide Excision Repair (NER) fix?",
+    a:"Large helix-distorting lesions such as pyrimidine dimers and bulky adducts. Endonucleases cut on both sides of the lesion and remove a large oligonucleotide (~25–30 nt).",
+    d:["Single damaged bases removed by glycosylase, leaving an abasic site that is then filled in by DNA Pol beta.","Mismatched bases after replication detected by Mut proteins and replaced by the correct nucleotide.","Double-strand breaks joined end-to-end without a template by a protein complex that holds the broken ends together."] },
+
+  { cat:"Mutations & Repair", q:"What is the difference between HRR and NHEJ?",
+    a:"HRR (Homologous Recombination Repair) = repairs double-strand breaks using the homologous chromosome as template; high fidelity. NHEJ = emergency repair that ligates broken ends with no template; error-prone.",
+    d:["HRR = repairs single mismatched bases using Mut proteins; active in G1. NHEJ = repairs double-strand breaks using a sister chromatid template; active in S/G2.","HRR = uses RNA as a template to resynthesize DNA across a break. NHEJ = uses the homologous chromosome and is restricted to meiotic cells.","HRR = error-prone repair active throughout the cell cycle. NHEJ = high-fidelity repair restricted to S and G2 phases."] },
+
+  { cat:"Mutations & Repair", q:"What is the difference between SDSA and DSBR?",
+    a:"SDSA (synthesis-dependent strand annealing) = HRR pathway resulting in non-crossover; major pathway in somatic cells. DSBR = HRR pathway that can result in crossover; major pathway in meiotic (gametic) cells.",
+    d:["SDSA = non-homologous end-joining pathway active in G1. DSBR = homologous recombination pathway active in S phase.","SDSA = repairs single-strand nicks using the sister chromatid as template. DSBR = repairs double-strand breaks using the homologous chromosome.","SDSA = occurs in mitochondria during replication of the mitochondrial genome. DSBR = occurs in the nucleus during meiotic recombination."] },
+
+  { cat:"Mutations & Repair", q:"What is the difference between an endonuclease and an exonuclease?",
+    a:"Endonuclease = cleaves phosphodiester bonds WITHIN a polynucleotide strand. Exonuclease = removes nucleotides sequentially from the END of a strand.",
+    d:["Endonuclease = removes nucleotides from the 3' end of a strand. Exonuclease = cleaves within the strand at internal sites.","Endonuclease = cleaves only DNA. Exonuclease = cleaves only RNA. Both are used in nucleotide excision repair.","Endonuclease = active during replication to remove RNA primers. Exonuclease = active during repair to excise damaged bases."] },
+
+  { cat:"Mutations & Repair", q:"What is allelic expansion?",
+    a:"An increase in the number of trinucleotide repeat copies within a gene across generations, which can increase disease severity (anticipation).",
+    d:["Duplication of an entire gene locus on a chromosome, producing extra copies of the gene product.","The gradual increase in allele frequency in a population over generations due to positive selection.","An increase in the length of a tandem repeat in the centromeric satellite DNA region."] },
+
+  { cat:"Mutations & Repair", q:"What is a transposable element (TE)?",
+    a:"A DNA sequence that can move (transpose) from one genomic location to another, potentially disrupting gene function.",
+    d:["A viral DNA sequence that integrates into the host genome and can excise to produce new virus particles.","A repetitive satellite DNA sequence found in centromeres that remains fixed in its chromosomal location.","A regulatory DNA element that activates transcription of nearby genes when it moves to a promoter region."] },
+
+  { cat:"Mutations & Repair", q:"What is the difference between a Class 1 (retrotransposon) and Class 2 (DNA transposon)?",
+    a:"Class 1 = retrotransposon; transposes via an RNA intermediate using reverse transcriptase ('copy-and-paste'). Class 2 = DNA transposon; uses transposase to cut and re-insert the element directly ('cut-and-paste').",
+    d:["Class 1 = uses transposase to cut and paste DNA directly. Class 2 = uses reverse transcriptase via an RNA intermediate.","Class 1 = found only in plants. Class 2 = found only in animals. Both disrupt gene expression by inserting into exons.","Class 1 = characterised by terminal inverted repeats. Class 2 = characterised by long terminal repeats (LTRs)."] },
+
+  { cat:"Mutations & Repair", q:"What is the Alu transposon?",
+    a:"The most abundant transposable element in the human genome (~300 bp); a Class 1 SINE (Short Interspersed Nuclear Element) that transposes via reverse transcriptase.",
+    d:["The most abundant Class 2 DNA transposon in humans (~3 kb); uses transposase and terminal inverted repeats to transpose.","A retroviral element (~9 kb) found in the human genome that retains all genes needed for autonomous retrotransposition.","A satellite DNA repeat (~171 bp) found specifically in centromeric regions that is bound by cen-proteins."] },
+
+  { cat:"Mutations & Repair", q:"What is a cryptic splice site?",
+    a:"A hidden sequence that resembles a splice site but is normally ignored; a mutation can activate it, causing aberrant splicing (e.g. Progeria's C→T silent mutation at nucleotide 1824 of LMNA).",
+    d:["A splice site located within an intron that causes intron retention when activated by a point mutation.","A splice site that is only active in certain tissues, producing tissue-specific protein isoforms from the same gene.","A mutant splice site at the exon-intron boundary that causes exon skipping during pre-mRNA processing."] },
+
+  // ── GENETIC DISEASES ──
+  { cat:"Genetic Diseases", q:"What gene is mutated in Cystic Fibrosis, and what is the most common mutation?",
+    a:"CFTR gene. Most common mutation = delta-F508: deletion of 3 nucleotides causing loss of phenylalanine at position 508.",
+    d:["LMNA gene. Most common mutation = C→T point mutation creating a cryptic splice site and producing a truncated lamin A protein.","HTT gene. Most common mutation = CAG repeat expansion beyond 40 copies in exon 1, causing toxic protein aggregation.","Beta-globin gene. Most common mutation = missense Glu→Val at codon 6, causing haemoglobin to polymerise under low oxygen."] },
+
+  { cat:"Genetic Diseases", q:"What are the main features of Cystic Fibrosis?",
+    a:"Thick mucus in lungs and organs due to defective chloride ion transport; life expectancy 41–51 years; 80% of deaths from lung infections. Autosomal recessive.",
+    d:["Progressive neurodegeneration due to a toxic polyglutamine protein; onset in mid-adulthood; anticipation observed across generations.","Premature aging, cardiovascular disease, and loss of subcutaneous fat; fatal ~14.5 years; gain-of-function dominant mutation.","Haemolytic anemia and vaso-occlusive crises in low oxygen; co-dominant expression in heterozygotes; missense mutation."] },
+
+  { cat:"Genetic Diseases", q:"What causes Tay-Sachs disease?",
+    a:"Loss-of-function mutation in the HEXA gene; absence of hexosaminidase A enzyme leads to GM2 ganglioside accumulation in neurons. Fatal in homozygotes; carriers have ~50% enzyme activity.",
+    d:["Loss-of-function mutation in the CFTR gene; defective chloride channel causes thick mucus in neurons and other organs.","Trinucleotide repeat expansion in the FMR-1 gene; leads to silencing of the gene and intellectual disability in homozygotes.","Missense mutation in the beta-globin gene; causes enzyme misfolding and accumulation of toxic protein aggregates in neurons."] },
+
+  { cat:"Genetic Diseases", q:"What mutation causes Sickle-Cell Anemia and what happens at the molecular level?",
+    a:"Missense mutation in beta-globin: Glu→Val at codon 6. Mutant HbS polymerises under low oxygen, deforming RBCs into a sickle shape that blocks capillaries.",
+    d:["Nonsense mutation in beta-globin at codon 39: creates a premature stop codon producing a truncated, unstable haemoglobin chain.","Deletion of 3 nucleotides in CFTR: causes misfolding of haemoglobin and its failure to bind oxygen at normal partial pressures.","CAG repeat expansion in the globin gene: produces a polyglutamine tract that causes haemoglobin to aggregate in red blood cells."] },
+
+  { cat:"Genetic Diseases", q:"What mutation causes Beta-Thalassemia?",
+    a:"Nonsense mutation at codon 39 of the beta-globin gene creating a premature stop codon; insufficient functional haemoglobin; common in Mediterranean populations.",
+    d:["Missense mutation at codon 6 of the beta-globin gene: Glu→Val; causes haemoglobin to polymerise under low oxygen conditions.","Deletion of the entire beta-globin gene cluster on chromosome 11; complete absence of beta-globin in homozygotes.","CAG repeat expansion in the beta-globin promoter; silences gene expression by preventing transcription factor binding."] },
+
+  { cat:"Genetic Diseases", q:"What causes Xeroderma Pigmentosum?",
+    a:"Mutations in NER (nucleotide excision repair) enzyme genes; inability to repair UV-induced pyrimidine dimers; extreme UV sensitivity and very high skin cancer risk.",
+    d:["Mutations in mismatch repair (MMR) genes; inability to repair replication errors leads to microsatellite instability and colon cancer.","Mutations in BRCA1/BRCA2 homologous recombination genes; inability to repair double-strand breaks; very high breast/ovarian cancer risk.","Mutations in base excision repair genes; inability to repair oxidative damage; extreme sensitivity to ionising radiation."] },
+
+  { cat:"Genetic Diseases", q:"What gene and mutation causes Huntington's Disease?",
+    a:"HTT gene: CAG repeat expansion in exon 1. 40+ repeats = fully penetrant neurodegeneration. Shows incomplete penetrance (36–39 repeats), variable expressivity, and anticipation; expands more in paternal transmission.",
+    d:["FMR-1 gene: CGG repeat expansion beyond 230 copies; causes progressive neurodegeneration in adulthood; expands more in maternal transmission.","DMPK gene: CTG repeat expansion; causes progressive neurodegeneration and muscle wasting; shows variable expressivity.","LMNA gene: C→T point mutation causing aberrant splicing; leads to progressive neurodegeneration and premature aging in adults."] },
+
+  { cat:"Genetic Diseases", q:"What are the CAG repeat thresholds for Huntington's Disease?",
+    a:"≤26 = normal. 27–35 = unaffected but unstable (may expand in children). 36–39 = incomplete penetrance. 40+ = fully affected. 60+ = childhood onset.",
+    d:["≤52 = normal. 60–200 = pre-mutation carrier (may expand). 230+ = fully affected with intellectual disability. No intermediate zone.","≤26 = normal. 36–39 = fully penetrant. 40–59 = incomplete penetrance. 60+ = unaffected carrier of unstable repeat.","≤35 = normal. 36–39 = affected with mild symptoms. 40–59 = incomplete penetrance. 60+ = severe adult-onset disease."] },
+
+  { cat:"Genetic Diseases", q:"What mutation causes Progeria (HGPS) and what is unusual about it?",
+    a:"LMNA gene: C→T point mutation at nucleotide 1824. It is a SILENT mutation that nonetheless activates a cryptic splice site, producing a truncated lamin A (progerin). Gain-of-function; autosomal dominant.",
+    d:["HTT gene: C→T point mutation at codon 17 that is a missense mutation converting threonine to methionine; disrupts nuclear localisation of huntingtin.","CFTR gene: deletion of 3 nucleotides (delta-F508) creating an in-frame deletion that causes protein misfolding and premature degradation.","FMR-1 gene: C→T point mutation in the promoter that silences the gene by creating an aberrant CpG methylation site."] },
+
+  { cat:"Genetic Diseases", q:"What are the key features of Progeria (HGPS)?",
+    a:"Premature aging in children; pleiotropy (multiple systems affected); fatal ~14.5 years average due to cardiovascular disease; gain-of-function dominant mutation in LMNA.",
+    d:["Progressive muscle wasting and cataracts from birth; variable expressivity depending on CTG repeat length; anticipation over generations; autosomal dominant.","Intellectual disability and autism spectrum features from childhood; X-linked; CGG repeat expansion causes gene silencing; maternal anticipation.","Thick mucus in airways causing recurrent infections; life expectancy ~41–51 years; autosomal recessive loss-of-function of CFTR."] },
+
+  { cat:"Genetic Diseases", q:"What is Familial Hypercholesterolemia a classic example of?",
+    a:"Incomplete dominance — heterozygotes (one functional LDL receptor copy) show significantly elevated cholesterol, intermediate between the two homozygotes.",
+    d:["Co-dominance — heterozygotes express both the normal LDL receptor and the mutant receptor simultaneously on cell surfaces.","Epistasis — a modifier gene suppresses LDL receptor expression, so the phenotype depends on interactions between two loci.","Complete dominance — heterozygotes are phenotypically identical to the normal homozygote because one functional copy is sufficient."] },
+
+  { cat:"Genetic Diseases", q:"What causes Myotonic Dystrophy and what genetic principle does it illustrate?",
+    a:"DMPK gene: CTG repeat expansion. More repeats = more severe symptoms — illustrates variable expressivity. Shows anticipation.",
+    d:["HTT gene: CAG repeat expansion. More repeats = earlier onset — illustrates incomplete penetrance. Expands more in paternal transmission.","FMR-1 gene: CGG repeat expansion. More repeats = more severe intellectual disability — illustrates anticipation in maternal transmission only.","CFTR gene: increasing deletion length = increasing severity — illustrates variable expressivity based on the amount of functional CFTR protein."] },
+
+  { cat:"Genetic Diseases", q:"What gene, repeat, and thresholds define Fragile X Syndrome?",
+    a:"FMR-1 gene; CGG repeat expansion. 6–52 = normal. 60–200 = pre-mutation (carrier). 230+ = fully mutant (gene silenced by methylation; intellectual disability).",
+    d:["HTT gene; CAG repeat expansion. 6–26 = normal. 27–35 = pre-mutation. 40+ = fully mutant (neurodegeneration).","DMPK gene; CTG repeat expansion. 5–34 = normal. 35–49 = mildly affected. 50+ = fully mutant (severe myotonic dystrophy).","FMR-1 gene; CGG repeat expansion. 6–52 = normal. 53–99 = pre-mutation. 100+ = fully mutant (neurodegeneration in adulthood)."] },
+
+  { cat:"Genetic Diseases", q:"How does anticipation differ between Huntington's Disease and Fragile X Syndrome?",
+    a:"Huntington's: repeats expand more in PATERNAL transmission (sperm). Fragile X: repeats expand in MATERNAL transmission (eggs); paternal transmission tends to keep or decrease repeat number.",
+    d:["Huntington's: repeats expand in maternal transmission; disease worsens in daughters. Fragile X: repeats expand in paternal transmission; disease worsens in sons.","Huntington's: anticipation is caused by CTG expansions that expand equally in both sexes. Fragile X: anticipation is caused by CAG expansions that only expand in females.","Huntington's: no parent-of-origin effect; repeats expand equally in maternal and paternal transmission. Fragile X: expands in both sexes but more rapidly in paternal transmission."] },
+
+  { cat:"Genetic Diseases", q:"What is Turner Syndrome?",
+    a:"45, X0 (Monosomy X). Affects females/AFAB; incidence ~1/5,000; short stature, webbed neck, infertility, and heart defects. Viable monosomy.",
+    d:["47, XXX (Trisomy X). Affects females/AFAB; incidence ~1/1,000; often mild or no symptoms; slightly increased risk of learning difficulties.","47, XXY (Klinefelter Syndrome). Affects males/AMAB; infertility, reduced testosterone, gynecomastia; incidence ~1/1,000.","45, XY (Y-only karyotype). Affects males/AMAB; caused by complete loss of the X chromosome; lethal in most cases."] },
+
+  { cat:"Genetic Diseases", q:"What is Klinefelter Syndrome?",
+    a:"47, XXY. Affects males/AMAB; incidence ~1/1,000; infertility, reduced testosterone, often tall stature. Extra X chromosome due to nondisjunction.",
+    d:["45, X0 (Turner Syndrome). Affects females/AFAB; short stature, infertility, heart defects; incidence ~1/5,000.","47, XYY. Affects males/AMAB; usually tall stature; often no major symptoms; incidence ~1/1,000.","47, XXX (Trisomy X). Affects females/AFAB; usually mild or no symptoms; rarely associated with infertility."] },
+
+  { cat:"Genetic Diseases", q:"What chromosomal abnormality causes Down Syndrome, and what is the main risk factor?",
+    a:"Trisomy 21 (47, +21). Most common viable autosomal trisomy. 94% of nondisjunctions arise from the mother. Maternal age is the primary risk factor.",
+    d:["Trisomy 18 (47, +18). Most common viable autosomal trisomy. 94% of nondisjunctions arise from the father. Paternal age is the primary risk factor.","Deletion of chromosome 21q22 region. The most common chromosomal deletion syndrome in live births. Not associated with parental age.","Trisomy 21 (47, +21). Most common viable autosomal trisomy. Caused equally by maternal and paternal nondisjunction. No parental age effect."] },
+
+  { cat:"Genetic Diseases", q:"What causes Cri du Chat Syndrome?",
+    a:"Deletion of the short arm (p) of chromosome 5 (5p-). Infant cry resembles a cat's meow; array of congenital malformations; intellectual disability.",
+    d:["Deletion of the long arm (q) of chromosome 22 (22q11.2); causes heart defects, immune problems, and developmental delays (DiGeorge Syndrome).","Trisomy 5 (47, +5); causes severe intellectual disability and distinctive facial features in affected infants.","Reciprocal translocation between chromosomes 5 and 12; causes the characteristic cat-cry due to laryngeal abnormalities."] },
+
+  { cat:"Genetic Diseases", q:"What causes DiGeorge Syndrome and how is it confirmed?",
+    a:"Deletion of 22q11.2 (long arm of chromosome 22). Confirmed by FISH using probes for the deleted region. Features: heart defects, immune deficiency, developmental delays.",
+    d:["Deletion of 5p (short arm of chromosome 5). Confirmed by karyotype and array CGH. Features: cat-like cry, intellectual disability, heart defects.","Trisomy 22 (47, +22). Confirmed by G-banded karyotype. Features: heart defects, immune problems, developmental delays.","Robertsonian translocation involving chromosome 22. Confirmed by G-banded karyotype. Features: immune deficiency and cardiac malformations."] },
+
+  { cat:"Genetic Diseases", q:"What chromosomal abnormality causes Chronic Myeloid Leukemia (CML)?",
+    a:"Reciprocal translocation between chromosomes 9 and 22, creating the Philadelphia chromosome. Fuses BCR and ABL genes, producing a constitutively active tyrosine kinase.",
+    d:["Deletion of the long arm of chromosome 22 (22q11.2); removes a tumour suppressor gene and allows unchecked myeloid proliferation.","Trisomy 22 (47, +22); the extra chromosome 22 contains an oncogene that drives myeloid cell expansion.","Robertsonian translocation fusing chromosomes 9 and 22; results in 44 chromosomes and activates a growth factor receptor."] },
+
+  { cat:"Genetic Diseases", q:"What are the karyotypes for Edwards and Patau Syndrome?",
+    a:"Edwards = Trisomy 18 (47, +18). Patau = Trisomy 13 (47, +13). Both cause severe abnormalities and are usually lethal within weeks to months after birth.",
+    d:["Edwards = Trisomy 13 (47, +13). Patau = Trisomy 18 (47, +18). Both usually lethal; Edwards more severe due to brain malformations.","Edwards = Trisomy 21 (47, +21). Patau = Trisomy 18 (47, +18). Edwards is lethal; Patau is viable into adulthood with support.","Edwards = Monosomy 18 (45, -18). Patau = Trisomy 13 (47, +13). Edwards lethal in utero; Patau lethal within the first year."] },
+
+  // ── BLOOD TYPES ──
+  { cat:"Blood Types", q:"What genotype produces Blood Type O?",
+    a:"ii — neither I^A nor I^B allele present; no ABO antigens on red blood cells; universal donor.",
+    d:["I^A I^B — both alleles present but neither dominates, so neither antigen is expressed on the cell surface.","I^A i — the recessive i allele suppresses the I^A allele, resulting in no antigen production.","I^B i — one copy of I^B is insufficient to produce detectable levels of B antigen on red blood cells."] },
+
+  { cat:"Blood Types", q:"What genotype produces Blood Type AB?",
+    a:"I^A I^B — both alleles are fully expressed simultaneously (co-dominance); both A and B antigens present on red blood cells.",
+    d:["I^A I^A — two copies of I^A are needed to produce both antigens; a single copy produces A antigen only.","I^A i and I^B i — the heterozygous combination of both dominant alleles with the recessive i allele produces AB.","ii with a modifier gene — the AB phenotype arises only when both parents are homozygous recessive for different modifier alleles."] },
+
+  { cat:"Blood Types", q:"What genotypes produce Blood Type A?",
+    a:"I^A I^A (homozygous) or I^A i (heterozygous) — A antigen present; i allele is recessive and contributes no antigen.",
+    d:["I^A I^B only — the presence of I^B is required to stabilise the I^A allele so it produces A antigen.","I^A I^A only — a single copy of I^A is insufficient; two copies are needed to produce detectable A antigen.","I^A i only — the homozygous I^A I^A genotype produces AB antigens due to gene dosage effects."] },
+
+  { cat:"Blood Types", q:"What genotypes produce Blood Type B?",
+    a:"I^B I^B (homozygous) or I^B i (heterozygous) — B antigen present; i allele is recessive and contributes no antigen.",
+    d:["I^B I^B only — a single copy of I^B is insufficient; two copies are required to produce detectable B antigen.","I^B i only — the homozygous I^B I^B genotype produces AB antigens due to increased gene expression.","I^B I^A only — the presence of I^A is required to stabilise I^B expression and produce B antigen."] },
+
+];
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+const MASTERED_THRESHOLD = 2;
+
+let state = {
+  deck: [], queue: [], mastered: new Set(),
+  correctCount: 0, wrongCount: 0,
+  activeCategory: null, sessions: 0,
+  streaks: {}
+};
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function cardId(c) { return c.cat + '|' + c.q; }
+
+function getCategories() {
+  const map = {};
+  CARDS.forEach(c => { if (!map[c.cat]) map[c.cat] = []; map[c.cat].push(c); });
+  return map;
+}
+
+function getMasteredForCat(cat) {
+  return CARDS.filter(c => c.cat === cat && state.mastered.has(cardId(c))).length;
+}
+
+// ── HOME ──
+const ICONS = {
+  "Scientists & Experiments":"🔬","Core Terms":"📖","Linkage & Mapping":"🗺️",
+  "Cytogenetics":"🧬","DNA Structure":"🧪","DNA Replication":"⚙️",
+  "Mutations & Repair":"🔧","Genetic Diseases":"🏥","Blood Types":"🩸"
+};
+
+function renderHome() {
+  const cats = getCategories();
+  const grid = document.getElementById('categoryGrid');
+  grid.innerHTML = '';
+  Object.entries(cats).forEach(([cat, cards]) => {
+    const mastered = getMasteredForCat(cat);
+    const pct = Math.round((mastered / cards.length) * 100);
+    const div = document.createElement('div');
+    div.className = 'cat-card';
+    div.innerHTML = `
+      <div class="cat-icon">${ICONS[cat]||'📚'}</div>
+      <div class="cat-title">${cat}</div>
+      <div class="cat-count">${mastered}/${cards.length} mastered</div>
+      <div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%"></div></div>`;
+    div.onclick = () => startQuiz(cat);
+    grid.appendChild(div);
+  });
+  document.getElementById('totalCount').textContent = CARDS.length;
+  document.getElementById('masteredCount').textContent = state.mastered.size;
+  document.getElementById('sessionCount').textContent = state.sessions;
+}
+
+// ── QUIZ ──
+function startQuiz(category) {
+  state.activeCategory = category;
+  const pool = category === '__all__' ? CARDS : CARDS.filter(c => c.cat === category);
+  const unmastered = pool.filter(c => !state.mastered.has(cardId(c)));
+  if (unmastered.length === 0) {
+    pool.forEach(c => { state.mastered.delete(cardId(c)); state.streaks[cardId(c)] = 0; });
+  }
+  const finalPool = pool.filter(c => !state.mastered.has(cardId(c)));
+  state.deck = shuffle(finalPool);
+  state.queue = [...state.deck];
+  state.correctCount = 0;
+  state.wrongCount = 0;
+  state.sessions++;
+  showScreen('quiz');
+  showQuestion();
+}
+
+function showQuestion() {
+  if (state.queue.length === 0) { showDone(); return; }
+
+  const card = state.queue[0];
+  const done = state.deck.filter(c => state.mastered.has(cardId(c))).length;
+  const total = state.deck.length;
+  const pct = Math.round((done / total) * 100);
+
+  document.getElementById('qCategory').textContent = card.cat;
+  document.getElementById('qText').textContent = card.q;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `${done} / ${total} mastered`;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('queueBadge').textContent = `↩ ${state.queue.length} remaining`;
+
+  // Use card's own distractors
+  const choices = shuffle([card.a, ...card.d]);
+  renderChoices(choices, card.a);
+
+  const fb = document.getElementById('feedbackBar');
+  fb.className = 'feedback-bar';
+  const qcard = document.getElementById('questionCard');
+  qcard.classList.remove('anim');
+  void qcard.offsetWidth;
+  qcard.classList.add('anim');
+}
+
+function renderChoices(choices, correct) {
+  const container = document.getElementById('choices');
+  container.innerHTML = '';
+  const letters = ['A','B','C','D'];
+  choices.forEach((text, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.innerHTML = `<span class="letter">${letters[i]}</span>${text}`;
+    btn.onclick = () => handleAnswer(btn, text, correct);
+    container.appendChild(btn);
+  });
+}
+
+function handleAnswer(clickedBtn, chosen, correct) {
+  document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+  const isCorrect = chosen === correct;
+  const card = state.queue[0];
+  const id = cardId(card);
+
+  if (isCorrect) {
+    clickedBtn.classList.add('correct');
+    state.correctCount++;
+    state.streaks[id] = (state.streaks[id] || 0) + 1;
+    if (state.streaks[id] >= MASTERED_THRESHOLD) state.mastered.add(id);
+    showFeedback(true);
+  } else {
+    clickedBtn.classList.add('wrong');
+    document.querySelectorAll('.choice-btn').forEach(b => {
+      if (b.textContent.includes(correct.slice(0, 30))) b.classList.add('correct');
+    });
+    state.wrongCount++;
+    state.streaks[id] = 0;
+    state.queue.push(card);
+    showFeedback(false, correct);
+  }
+  state.queue.shift();
+}
+
+function showFeedback(isCorrect, correctAnswer) {
+  const fb = document.getElementById('feedbackBar');
+  const icon = document.getElementById('fbIcon');
+  const text = document.getElementById('fbText');
+  if (isCorrect) {
+    fb.className = 'feedback-bar correct-fb show';
+    icon.textContent = '✓';
+    text.innerHTML = `<strong>Correct!</strong>${state.mastered.size > 0 ? ` ${state.mastered.size} card${state.mastered.size!==1?'s':''} mastered.` : ''}`;
+  } else {
+    fb.className = 'feedback-bar wrong-fb show';
+    icon.textContent = '✗';
+    text.innerHTML = `<strong>Not quite — this card will come back.</strong>`;
+  }
+}
+
+function showDone() {
+  const total = state.correctCount + state.wrongCount;
+  const pct = total > 0 ? Math.round((state.correctCount / total) * 100) : 0;
+  document.getElementById('doneCorrect').textContent = state.correctCount;
+  document.getElementById('doneWrong').textContent = state.wrongCount;
+  document.getElementById('donePct').textContent = pct + '%';
+  const allMastered = state.deck.every(c => state.mastered.has(cardId(c)));
+  document.getElementById('doneTrophy').textContent = allMastered ? '🏆' : pct >= 80 ? '🎉' : '💪';
+  document.getElementById('doneTitle').textContent = allMastered ? 'All Mastered!' : 'Round Complete!';
+  document.getElementById('doneSub').textContent = allMastered
+    ? `Every card answered correctly twice. Your knowledge is locked in.`
+    : `${state.mastered.size} card${state.mastered.size!==1?'s':''} mastered. Keep grinding until you get them all.`;
+  document.getElementById('redoBtn').textContent = allMastered ? 'Study Again →' : 'Continue Round →';
+  document.getElementById('redoBtn').onclick = () => startQuiz(state.activeCategory);
+  showScreen('done');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+document.getElementById('startAllBtn').onclick = () => startQuiz('__all__');
+document.getElementById('backBtn').onclick = () => { showScreen('home'); renderHome(); };
+document.getElementById('nextBtn').onclick = () => showQuestion();
+document.getElementById('doneHomeBtn').onclick = () => { showScreen('home'); renderHome(); };
+
+renderHome();
+</script>
+</body>
+</html>
